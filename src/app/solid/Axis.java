@@ -1,0 +1,32 @@
+package app.solid;
+
+import lwjglutils.OGLBuffers;
+
+public class Axis extends Solid{
+    public Axis() {
+        float[] vb = {
+            // x
+            0, 0, 0,   1, 0, 0,
+            10, 0, 0,   1, 0, 0,
+            // y
+            0, 0, 0,   0, 1, 0,
+            0, 10, 0,   0, 1, 0,
+            // z
+            0, 0, 0,   0, 0, 1,
+            0, 0, 10,   0, 0, 1,
+        };
+
+        int[] ib = {
+            0, 1,
+            2, 3,
+            4, 5
+        };
+
+        OGLBuffers.Attrib[] attributes = {
+                new OGLBuffers.Attrib("inPosition", 3),
+                new OGLBuffers.Attrib("inColor", 3),
+        };
+
+        buffers = new OGLBuffers(vb, attributes, ib);
+    }
+}
