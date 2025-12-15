@@ -29,7 +29,6 @@ public class TeapotData {
             {118,118,118,118,124,122,119,121,123,126,125,120, 40, 39, 38, 37},
     };
 
-    // Každý bod je {x,y,z}.
     public static final float[][] VERTICES = {
             { 0.2000f,  0.0000f, 2.70000f}, { 0.2000f, -0.1120f, 2.70000f},
             { 0.1120f, -0.2000f, 2.70000f}, { 0.0000f, -0.2000f, 2.70000f},
@@ -108,15 +107,12 @@ public class TeapotData {
 
         for (int p = 0; p < PATCHES.length; p++) {
             boolean mirrorXY = (p <= 4) || (p == 9);
-            boolean mirrorYOnly = (p >= 5) && (p <= 8);
 
             int[][] variants;
             if (mirrorXY) {
                 variants = new int[][] { {+1,+1}, {-1,+1}, {+1,-1}, {-1,-1} };
-            } else if (mirrorYOnly) {
-                variants = new int[][] { {+1,+1}, {+1,-1} }; // x stays, y flips
             } else {
-                variants = new int[][] { {+1,+1} };
+                variants = new int[][] { {+1,+1}, {+1,-1} }; // x stays, y flips
             }
 
             for (int[] v : variants) {
@@ -196,7 +192,7 @@ public class TeapotData {
             }
         }
 
-        // normal = normalize(cross(dP/du, dP/dv))
+        // normals
         float nx = duy*dvz - duz*dvy;
         float ny = duz*dvx - dux*dvz;
         float nz = dux*dvy - duy*dvx;

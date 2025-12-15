@@ -23,7 +23,6 @@ public class Teapot extends Solid {
     private void rebuild() {
         Mesh m = TeapotData.build(resolution);
 
-        // interleaved: pos(3), normal(3), uv(2)
         OGLBuffers.Attrib[] attributes = {
                 new OGLBuffers.Attrib("inPosition", 3),
                 new OGLBuffers.Attrib("inNormal", 3),

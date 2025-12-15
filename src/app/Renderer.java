@@ -368,16 +368,12 @@ public class Renderer extends AbstractRenderer {
                 width = w;
                 height = h;
                 System.out.println("Renderer resize to [" + w + ", " + h + "]");
-
-                // přepočítat projekci
                 updateProjection();
 
-                // přegenerovat renderTarget na novou velikost okna
                 renderTarget = new OGLRenderTarget(width, height);
                 aoTarget = new OGLRenderTarget(width, height);
                 aoBlurTarget = new OGLRenderTarget(width, height);
 
-                // případně nastavit viewport hned (není nutné, děláš to v drawFirst())
                 glViewport(0, 0, width, height);
             }
         }
