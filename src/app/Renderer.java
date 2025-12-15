@@ -18,17 +18,16 @@ import static org.lwjgl.opengl.GL30.glBindFramebuffer;
 
 
 public class Renderer extends AbstractRenderer {
-
-    private Solid triangle, axis, grid, quad, gridstrip;
-    private int shaderProgramTriangle, shaderProgramAxis, shaderProgramGrid, shaderProgramQuad, shaderProgramAO, shaderProgramAOBlur;
-    private Mat4 proj, grid1, grid2, lightModel;
+    private Teapot teapot;
+    private Solid triangle, axis, quad;
+    private int teapotTess = 10;
+    private int shaderProgramTriangle, shaderProgramAxis, shaderProgramTeapot, shaderProgramQuad, shaderProgramAO, shaderProgramAOBlur;
+    private Mat4 proj, lightModel;
     private OGLRenderTarget renderTarget, aoTarget, aoBlurTarget;
     private boolean usePerspective = true;
+    private boolean wireframe = false;
     private final double fov = Math.toRadians(70);
-    double modelScale = 1.0;
-    double modelRotationY = 0.0;
-    private float time = 0;
-    private int surfaceId = 0;
+    float time;
 
     // Camera
     private Camera camera;
@@ -37,8 +36,8 @@ public class Renderer extends AbstractRenderer {
     private boolean rightMouseDown = false;
     private boolean firstMouse = true;
 
-    // Textures
-    private OGLTexture2D textureBricks, textureGlobe;
+    // Texture
+    private OGLTexture2D textureBricks;
 
     // Light
     private Vec3D lightPos = new Vec3D(3, 3, 3);
@@ -66,23 +65,19 @@ public class Renderer extends AbstractRenderer {
         updateProjection();
         updateLightModelAndDir();
 
-        grid1 = new Mat4Transl(-2.0, 0.0, 0.0);
-        grid2 = new Mat4Transl( 2.0, 0.0, 0.0);
-
         triangle = new Triangle();
         axis = new Axis();
-        grid = new Grid(100, 100);
-        gridstrip = new GridStrip(100,100);
         quad = new Grid(2, 2);
+        teapot = new Teapot(teapotTess);
 
+        // Teapot
+        shaderProgramTeapot = ShaderUtils.loadProgram("/teapot");
         // Trojuhelnik
         shaderProgramTriangle = ShaderUtils.loadProgram("/triangle");
         // Osy
         shaderProgramAxis = ShaderUtils.loadProgram("/axis");
         //Quad
         shaderProgramQuad = ShaderUtils.loadProgram("/quad");
-        // Grid
-        shaderProgramGrid = ShaderUtils.loadProgram("/grid");
         // AO
         shaderProgramAO = ShaderUtils.loadProgram("/ao");
         // Blur
@@ -90,7 +85,6 @@ public class Renderer extends AbstractRenderer {
         // Textures
         try {
             textureBricks = new OGLTexture2D("textures/bricks.jpg");
-            textureGlobe = new OGLTexture2D("textures/globe.jpg");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -111,12 +105,6 @@ public class Renderer extends AbstractRenderer {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         time += 0.01f;
 
-        // Transformace
-        Mat4 scale = new Mat4Scale(modelScale, modelScale, modelScale);
-        Mat4 rot  = new Mat4RotY(modelRotationY);
-        Mat4 transl = new Mat4Transl(2.0, 0.0, 0.0);
-        grid2 = transl.mul(rot).mul(scale);
-
         // --- Vykresleni ---
 
         // Trojúhelník
@@ -133,24 +121,17 @@ public class Renderer extends AbstractRenderer {
         setGlobalUniforms(shaderProgramAxis);
         axis.getBuffers().draw(GL_LINES, shaderProgramAxis);
 
-        //Gridy
-        glUseProgram(shaderProgramGrid);
-        setGlobalUniforms(shaderProgramGrid);
-        setLightUniforms(shaderProgramGrid);
-        int locUTime = glGetUniformLocation(shaderProgramGrid, "uTime");
-        int locUSurfaceId = glGetUniformLocation(shaderProgramGrid, "uSurfaceId");
-        textureGlobe.bind(shaderProgramGrid, "textureGlobe", 0);
-        // Grid 1
-        glUniform1f(locUTime, time);
-        glUniform1i(locUSurfaceId, surfaceId);
-        setModelMatrix(shaderProgramGrid, grid1);
-        grid.getBuffers().draw(GL_TRIANGLES, shaderProgramGrid);
-        // Grid 2
-        textureBricks.bind(shaderProgramGrid, "textureBricks", 0);
-        int surfaceId2 = 2;
-        glUniform1i(locUSurfaceId, surfaceId2);
-        setModelMatrix(shaderProgramGrid, grid2);
-        gridstrip.getBuffers().draw(GL_TRIANGLE_STRIP, shaderProgramGrid);
+        // Teapot
+        glUseProgram(shaderProgramTeapot);
+        int locWire = glGetUniformLocation(shaderProgramTeapot, "uEnableWireframe");
+        enableWireframe(locWire);
+        setGlobalUniforms(shaderProgramTeapot);
+        setLightUniforms(shaderProgramTeapot);
+        textureBricks.bind(shaderProgramTeapot, "textureBricks", 0);
+        Mat4 modelTeapot = new Mat4Scale(0.5, 0.5, 0.5);
+        setModelMatrix(shaderProgramTeapot, modelTeapot);
+        teapot.getBuffers().draw(GL_TRIANGLES, shaderProgramTeapot);
+        disableWireframe(locWire);
     }
     private void drawSecond() {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -215,10 +196,10 @@ public class Renderer extends AbstractRenderer {
         Vec3D eye = camera.getPosition();
 
         // složky barvy
-        int locAmb = glGetUniformLocation(shaderProgramGrid, "uAmbientColor");
-        int locDiff = glGetUniformLocation(shaderProgramGrid, "uDiffuseColor");
-        int locSpec = glGetUniformLocation(shaderProgramGrid, "uSpecularColor");
-        int locShine = glGetUniformLocation(shaderProgramGrid, "uShininess");
+        int locAmb = glGetUniformLocation(shaderProgramTeapot, "uAmbientColor");
+        int locDiff = glGetUniformLocation(shaderProgramTeapot, "uDiffuseColor");
+        int locSpec = glGetUniformLocation(shaderProgramTeapot, "uSpecularColor");
+        int locShine = glGetUniformLocation(shaderProgramTeapot, "uShininess");
         glUniform3f(locAmb, 0.2f, 0.2f, 0.2f);
         glUniform3f(locDiff, 0.9f, 0.8f, 0.8f);
         glUniform3f(locSpec, 1.0f, 1.0f, 1.0f);
@@ -247,15 +228,15 @@ public class Renderer extends AbstractRenderer {
         // reflektor
         float inner = (float) Math.cos(Math.toRadians(20));
         float outer = (float) Math.cos(Math.toRadians(40));
-        int locInner = glGetUniformLocation(shaderProgramGrid, "uInnerCutOff");
-        int locOuter = glGetUniformLocation(shaderProgramGrid, "uOuterCutOff");
+        int locInner = glGetUniformLocation(shaderProgramTeapot, "uInnerCutOff");
+        int locOuter = glGetUniformLocation(shaderProgramTeapot, "uOuterCutOff");
         glUniform1f(locInner, inner);
         glUniform1f(locOuter, outer);
 
         // útlum světla
-        int locCA = glGetUniformLocation(shaderProgramGrid, "uConstantAtt");
-        int locLA = glGetUniformLocation(shaderProgramGrid, "uLinearAtt");
-        int locQA = glGetUniformLocation(shaderProgramGrid, "uQuadraticAtt");
+        int locCA = glGetUniformLocation(shaderProgramTeapot, "uConstantAtt");
+        int locLA = glGetUniformLocation(shaderProgramTeapot, "uLinearAtt");
+        int locQA = glGetUniformLocation(shaderProgramTeapot, "uQuadraticAtt");
         glUniform1f(locCA, 1.0f);
         glUniform1f(locLA, 0.09f);
         glUniform1f(locQA, 0.032f);
@@ -304,6 +285,18 @@ public class Renderer extends AbstractRenderer {
             proj = new Mat4OrthoRH( width, height, 0.1, 100);
         }
     }
+    private void enableWireframe(int locWire){
+        if (wireframe) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        }
+        glUniform1i(locWire, wireframe ? 1 : 0);
+    }
+    private void disableWireframe(int locWire){
+        if (wireframe) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+        glUniform1f(locWire, 0);
+    }
 
     private final GLFWKeyCallback keyCallback = new GLFWKeyCallback() {
 		@Override
@@ -344,18 +337,16 @@ public class Renderer extends AbstractRenderer {
                     lightPos = new Vec3D(lightPos.getX(), lightPos.getY(), lightPos.getZ() - step);
                     updateLightModelAndDir();
                 }
-                case GLFW_KEY_Z -> modelScale *= 1.1;   // zvětšit
-                case GLFW_KEY_X -> modelScale /= 1.1;   // zmenšit
-                case GLFW_KEY_C -> modelRotationY += 0.1;
             }
             if (action == GLFW_PRESS){
                 switch (key){
-                    case GLFW_KEY_1 -> surfaceId = 0;
-                    case GLFW_KEY_2 -> surfaceId = 1;
-                    case GLFW_KEY_3 -> surfaceId = 2;
-                    case GLFW_KEY_4 -> surfaceId = 3;
-                    case GLFW_KEY_5 -> surfaceId = 4;
-                    case GLFW_KEY_6 -> surfaceId = 5;
+                    case GLFW_KEY_1 -> {
+                        teapotTess = Math.min(teapotTess + 2, 60);
+                        teapot.setResolution(teapotTess); }
+                    case GLFW_KEY_2 -> {
+                        teapotTess = Math.max(teapotTess - 2, 2);
+                        teapot.setResolution(teapotTess); }
+                    case GLFW_KEY_3 -> wireframe = !wireframe;
                     case GLFW_KEY_F1 -> enableAmbient = !enableAmbient;
                     case GLFW_KEY_F2 -> enableDiffuse = !enableDiffuse;
                     case GLFW_KEY_F3 -> enableSpecular = !enableSpecular;
