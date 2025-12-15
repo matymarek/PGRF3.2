@@ -40,7 +40,7 @@ public class Renderer extends AbstractRenderer {
     private OGLTexture2D textureBricks;
 
     // Light
-    private Vec3D lightPos = new Vec3D(3, 3, 3);
+    private Vec3D lightPos = new Vec3D(3, 20, 3);
     private Vec3D lightDir;
 
     // Blinn-Phong
